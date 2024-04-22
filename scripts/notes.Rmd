@@ -1,0 +1,367 @@
+#Installed this version of blast
+"ncbi-blast-2.15.0+-win64.exe" from  "https://ftp.ncbi.nlm.nih.gov/blast/executables/LATEST/"   
+
+#transferred each amino acid sequence to its own new file 
+awk '/^>/ { if (gene) { print ">" tolower(gene) > tolower(gene) ".txt"; print seq >> tolower(gene) ".txt" } gene = substr($0, 2); gsub(/ /, "", gene); seq = ""; next } { seq = seq $0 } END { if (gene) { print ">" tolower(gene) > tolower(gene) ".txt"; print seq >> tolower(gene) ".txt" } }' at_cbl_cam_cml.txt
+
+
+#Installed the marchantia genome from "https://marchantia.info/download/MpTak_v6.1/"
+
+#file called 
+"MpTak_v6.1.genome.fasta.gz"
+
+#Saved as 
+"marchantia.genome.fasta.gz"
+
+#unzipped file
+gunzip marchantia.genome.fasta.gz
+
+#now saved as 
+"marchantia.genome.fasta"
+
+#created blast database 
+makeblastdb -in marchantia.genome.fasta -dbtype prot -out marchantia.db
+
+#protein database was causing errors, created a nucleotide database using
+makeblastdb -in /cloud/project/data/marchantia/marchantia.genome.fasta -dbtype nucl -out /cloud/project/data/marchantia/databases/marchantia.db
+
+
+#trial blast using 
+blastp -query /cloud/project/data/arabidopsis/atcam/atcam1.txt -db /cloud/project/data/marchantia/databases/marchantia.db -out /cloud/project/data/blast/atcam/atcam1.results.txt
+#This returned a results saying no hits were found
+
+#trial blast using correct database returned results
+tblastn -query /cloud/project/data/arabidopsis/atcam/atcam1.txt -db /cloud/project/data/marchantia/databases/marchantia.db -out /cloud/project/data/blast/atcam/atcam1.results.txt
+
+
+#blasted all atcam amino acid sequences using a loop
+
+header="Query_ID Subject_ID %_Identity Alignment_Length Mismatches Gap_Openings Query_Start Query_End Subject_Start Subject_End E_Value Bit_Score"
+
+for file in /cloud/project/data/arabidopsis/atcam/atcam*.txt; do
+    output="/cloud/project/data/blast/atcam/$(basename "$file" .txt).results.txt"
+  
+   
+    { echo "$header"; tblastn -query "$file" -db /cloud/project/data/marchantia/databases/marchantia.db -outfmt 6; } > "$output"
+
+    echo "BLAST analysis for $file completed. Results saved in $output"
+done
+
+
+
+
+#same for atcml:
+
+header="Query_ID Subject_ID %_Identity Alignment_Length Mismatches Gap_Openings Query_Start Query_End Subject_Start Subject_End E_Value Bit_Score"
+
+for file in /cloud/project/data/arabidopsis/atcml/atcml*.txt; do
+    output="/cloud/project/data/blast/atcml/$(basename "$file" .txt).results.txt"
+  
+   
+    { echo "$header"; tblastn -query "$file" -db /cloud/project/data/marchantia/databases/marchantia.db -outfmt 6; } > "$output"
+
+    echo "BLAST analysis for $file completed. Results saved in $output"
+done
+
+
+
+
+
+#same for atcbl:
+
+
+header="Query_ID Subject_ID %_Identity Alignment_Length Mismatches Gap_Openings Query_Start Query_End Subject_Start Subject_End E_Value Bit_Score"
+
+for file in /cloud/project/data/arabidopsis/atcbl/atcbl*.txt; do
+    output="/cloud/project/data/blast/atcbl/$(basename "$file" .txt).results.txt"
+  
+   
+    { echo "$header"; tblastn -query "$file" -db /cloud/project/data/marchantia/databases/marchantia.db -outfmt 6; } > "$output"
+
+    echo "BLAST analysis for $file completed. Results saved in $output"
+done
+
+
+#There was a problem with these blast results, i was blasting to marchantia genome, so i was returned results containing infomation only on chromosome location and how far into the chromosome each match was. e.g. chr1 999583-999750. Annotated file contains the name of genome that will be more useful. 
+
+#installed marchantia genome annotation from 
+"https://marchantia.info/download/MpTak_v6.1/"
+#version 
+"MpTak_v6.1_func_annotation.tsv"
+#saved as 
+"marchantia.genome.annotation.tsv"
+
+
+#Attempting to fix issue, finding more useful results from blast search
+
+#Downloading marchantia protein database from 
+"https://marchantia.info/download/MpTak_v6.1/"
+
+#file called 
+"MpTak_v6.1r1.protein.fasta.gz"
+
+#saved as 
+"marchantia.protein.fasta.gz"
+
+#unzipped file
+gunzip marchantia.protein.fasta.gz
+
+#saved as
+"marchantia.protein.fasta"
+
+#created blast database 
+makeblastdb -in /cloud/project/data/marchantia/marchantia.protein.fasta -dbtype prot -out /cloud/project/data/marchantia/databases/protein/marchantia.protein.db -parse_seqids
+
+#trial blast using new marchantia protein database
+blastp -query /cloud/project/data/arabidopsis/atcam/atcam1.txt -db /cloud/project/data/marchantia/databases/protein/marchantia.protein.db -out /cloud/project/data/blast/atcam/atcam1.protein.trial.results.txt -outfmt 6 
+
+
+#LETS FUCKING GOOOOO
+results returned with protein names.
+
+#Creating correct loop for all files
+#CBLs:
+header="Query_ID Subject_ID %_Identity Alignment_Length Mismatches Gap_Openings Query_Start Query_End Subject_Start Subject_End E_Value Bit_Score"
+
+for file in /cloud/project/data/arabidopsis/atcbl/atcbl*.txt; do
+    output="/cloud/project/data/blast/atcbl/$(basename "$file" .txt).results.txt"
+  
+   
+    { echo "$header"; blastp -query "$file" -db /cloud/project/data/marchantia/databases/protein/marchantia.protein.db -outfmt 6 ; } > "$output"
+
+    echo "BLAST analysis for $file completed. Results saved in $output"
+done
+
+#CAMs:
+header="Query_ID Subject_ID %_Identity Alignment_Length Mismatches Gap_Openings Query_Start Query_End Subject_Start Subject_End E_Value Bit_Score"
+
+for file in /cloud/project/data/arabidopsis/atcam/atcam*.txt; do
+    output="/cloud/project/data/blast/atcam/$(basename "$file" .txt).results.txt"
+  
+   
+    { echo "$header"; blastp -query "$file" -db /cloud/project/data/marchantia/databases/protein/marchantia.protein.db -outfmt 6 ; } > "$output"
+
+    echo "BLAST analysis for $file completed. Results saved in $output"
+done
+
+
+#CMLs:
+header="Query_ID Subject_ID %_Identity Alignment_Length Mismatches Gap_Openings Query_Start Query_End Subject_Start Subject_End E_Value Bit_Score"
+
+for file in /cloud/project/data/arabidopsis/atcml/atcml*.txt; do
+    output="/cloud/project/data/blast/atcml/$(basename "$file" .txt).results.txt"
+  
+   
+    { echo "$header"; blastp -query "$file" -db /cloud/project/data/marchantia/databases/protein/marchantia.protein.db -outfmt 6 ; } > "$output"
+
+    echo "BLAST analysis for $file completed. Results saved in $output"
+done
+
+
+#Now must find a way of pulling the highest percent matches found in blast results from marchantia.genome.annotation.tsv
+
+#attempting to pull matches above identity threshold
+#CBLS:
+# Create the directory to store filtered results
+mkdir -p /cloud/project/data/marchantia/filtered.results/cbl
+
+# Filter and save results based on identity threshold (50%)
+awk -F'\t' '$3 > 75' /cloud/project/data/blast/atcbl/atcbl*.results.txt | while IFS=$'\t' read -r query_id subject_id rest; do
+    echo -e "$query_id\t$subject_id" >> "/cloud/project/data/marchantia/filtered.results/cbl/${query_id}.filtered.results.txt"
+done
+
+#CAMs:
+# Create the directory to store filtered results
+mkdir -p /cloud/project/data/marchantia/filtered.results/cam
+
+# Filter and save results based on identity threshold (75%)
+awk -F'\t' '$3 > 75' /cloud/project/data/blast/atcam/atcam*.results.txt | while IFS=$'\t' read -r query_id subject_id rest; do
+    echo -e "$query_id\t$subject_id" >> "/cloud/project/data/marchantia/filtered.results/cam/${query_id}.filtered.results.txt"
+done
+
+#CMLs:
+# Create the directory to store filtered results
+mkdir -p /cloud/project/data/marchantia/filtered.results/cml
+
+# Filter and save results based on identity threshold (50%)
+awk -F'\t' '$3 > 50' /cloud/project/data/blast/atcml/atcml*.results.txt | while IFS=$'\t' read -r query_id subject_id rest; do
+    echo -e "$query_id\t$subject_id" >> "/cloud/project/data/marchantia/filtered.results/cml/${query_id}.filtered.results.txt"
+done
+
+#speak to Ben, find out how i should best filter results, then extract from annotated file, and ask how to build phylogenetic tree. Also begin to consider expression data.
+
+#Installing clustal omega
+"http://www.clustal.org/omega/"
+
+#File 
+"Standalone 64-bit Linux binary (1.2.4)"
+
+#Saved as
+"clustalo-1.2.4-Ubuntu-x86_64"
+
+#Renamed
+"clustalo"
+
+#Not filtering yet, will first make phylogenetic trees of all results
+
+#Creating text file with all matched subject ids
+#CAMs:
+awk '$2 != "Subject_ID" {print $2}' /cloud/project/data/blast/atcam/atcam*.results.txt > /cloud/project/data/blast/atcam/atcam.subject.ids.file.txt
+
+#CMLS:
+awk '$2 != "Subject_ID" {print $2}' /cloud/project/data/blast/atcml/atcml*.results.txt > /cloud/project/data/blast/atcml/atcml.subject.ids.file.txt
+
+#CBLs:
+awk '$2 != "Subject_ID" {print $2}' /cloud/project/data/blast/atcbl/atcbl*.results.txt > /cloud/project/data/blast/atcbl/atcbl.subject.ids.file.txt
+
+
+#extract protein sequences from database based on a list of subject IDs provided in the file 
+#CAMs:
+blastdbcmd -db /cloud/project/data/marchantia/databases/protein/marchantia.protein.db -entry_batch /cloud/project/data/blast/atcam/atcam.subject.ids.file.txt -outfmt '%f' -out /cloud/project/data/blast/atcam/cam.extracted.protein.sequences.fasta
+
+#Checking number of duplicates
+grep '^>' /cloud/project/data/blast/atcam/cam.extracted.protein.sequences.fasta | sort | uniq -c
+#Output is useful, shows the proteins that occur at greater frequencies.
+
+
+#Remove duplicates 
+awk '/^>/{if($0 in seen) next; seen[$0]; print; skip=0; next} !skip {print; skip=1}' /cloud/project/data/blast/atcam/cam.extracted.protein.sequences.fasta > /cloud/project/data/blast/atcam/cam.unique.extracted.protein.sequences.fasta
+
+#CMLs:
+blastdbcmd -db /cloud/project/data/marchantia/databases/protein/marchantia.protein.db -entry_batch /cloud/project/data/blast/atcml/atcml.subject.ids.file.txt -outfmt '%f' -out /cloud/project/data/blast/atcml/cml.extracted.protein.sequences.fasta
+
+#Checking number of duplicates
+grep '^>' /cloud/project/data/blast/atcml/cml.extracted.protein.sequences.fasta | sort | uniq -c
+#Output is useful, shows the proteins that occur at greater frequencies.
+
+
+#Remove duplicates 
+awk '/^>/{if($0 in seen) next; seen[$0]; print; skip=0; next} !skip {print; skip=1}' /cloud/project/data/blast/atcml/cml.extracted.protein.sequences.fasta > /cloud/project/data/blast/atcml/cml.unique.extracted.protein.sequences.fasta
+
+
+#CBLs:
+blastdbcmd -db /cloud/project/data/marchantia/databases/protein/marchantia.protein.db -entry_batch /cloud/project/data/blast/atcbl/atcbl.subject.ids.file.txt -outfmt '%f' -out /cloud/project/data/blast/atcbl/cbl.extracted.protein.sequences.fasta
+
+#Checking number of duplicates
+grep '^>' /cloud/project/data/blast/atcbl/cbl.extracted.protein.sequences.fasta | sort | uniq -c
+#Output is useful, shows the proteins that occur at greater frequencies.
+
+
+#Remove duplicates 
+awk '/^>/{if($0 in seen) next; seen[$0]; print; skip=0; next} !skip {print; skip=1}' /cloud/project/data/blast/atcbl/cbl.extracted.protein.sequences.fasta > /cloud/project/data/blast/atcbl/cbl.unique.extracted.protein.sequences.fasta
+
+
+
+#This output will allow me to create phylogenetic tree of all atcam matches.
+
+
+#Creating phylogenetic trees of all matches using clustal omega
+#CAMs:
+./clustalo -i /cloud/project/data/blast/atcam/cam.unique.extracted.protein.sequences.fasta -o /cloud/project/data/clustalo/trees/cam.output.alignment.fasta
+
+#unsure if command is woring but takes along time to load or it is not working.
+#Run command and give it time to process, maybe leave overnight at home.
+#so far appears command may be working just needs time to process the 6700 protein sequences.
+
+
+#Used the clustalo webpage "https://www.ebi.ac.uk/jdispatcher/msa/clustalo", 
+#entering the contents from "cam.unique.extracted.protein.sequences.fasta"
+#This produced a newick format tree, using R scripts in "building_phylogenetic_tree.R" to produce trees for blast matches of all protein families
+
+website order, CAM --- CML --- CBL --- AT !!!!
+
+
+
+downloaded newick text string
+
+created tress using this text string, however the trees are somewhat messy
+
+
+#Going to filter the blast results for evalues smaller than e-05
+
+#Set threshold
+threshold=1e-05
+
+#CAMs:
+for file in /cloud/project/data/blast/atcam/atcam*.results.txt; do
+    output_file="/cloud/project/data/blast/atcam/$(basename "${file%.txt}").filtered.txt"
+    awk -v threshold="$threshold" '$11 < threshold' "$file" > "$output_file"
+    echo "Filtered results for $file. Output saved in $output_file"
+done
+
+#CBL:
+for file in /cloud/project/data/blast/atcbl/atcbl*.results.txt; do
+    output_file="/cloud/project/data/blast/atcbl/$(basename "${file%.txt}").filtered.txt"
+    awk -v threshold="$threshold" '$11 < threshold' "$file" > "$output_file"
+    echo "Filtered results for $file. Output saved in $output_file"
+done
+
+#CML:
+for file in /cloud/project/data/blast/atcml/atcml*.results.txt; do
+    output_file="/cloud/project/data/blast/atcml/$(basename "${file%.txt}").filtered.txt"
+    awk -v threshold="$threshold" '$11 < threshold' "$file" > "$output_file"
+    echo "Filtered results for $file. Output saved in $output_file"
+done
+
+
+#Creating text file with all matched subject ids from filtered results
+#CAMs:
+awk '$2 != "Subject_ID" {print $2}' /cloud/project/data/blast/atcam/atcam*.results.filtered.txt > /cloud/project/data/blast/atcam/atcam.subject.ids.file.txt
+
+#CMLS:
+awk '$2 != "Subject_ID" {print $2}' /cloud/project/data/blast/atcml/atcml*.results.filtered.txt > /cloud/project/data/blast/atcml/atcml.subject.ids.file.txt
+
+#CBLs:
+awk '$2 != "Subject_ID" {print $2}' /cloud/project/data/blast/atcbl/atcbl*.results.filtered.txt > /cloud/project/data/blast/atcbl/atcbl.subject.ids.file.txt
+
+#Overwriting the unfiltered files 
+
+
+#extract protein sequences from database based on a list of subject IDs provided in the file 
+#CAMs:
+blastdbcmd -db /cloud/project/data/marchantia/databases/protein/marchantia.protein.db -entry_batch /cloud/project/data/blast/atcam/atcam.subject.ids.file.txt -outfmt '%f' -out /cloud/project/data/blast/atcam/cam.extracted.protein.sequences.fasta
+
+#CMLs:
+blastdbcmd -db /cloud/project/data/marchantia/databases/protein/marchantia.protein.db -entry_batch /cloud/project/data/blast/atcml/atcml.subject.ids.file.txt -outfmt '%f' -out /cloud/project/data/blast/atcml/cml.extracted.protein.sequences.fasta
+
+#CBLs:
+blastdbcmd -db /cloud/project/data/marchantia/databases/protein/marchantia.protein.db -entry_batch /cloud/project/data/blast/atcbl/atcbl.subject.ids.file.txt -outfmt '%f' -out /cloud/project/data/blast/atcbl/cbl.extracted.protein.sequences.fasta
+
+#Remove duplicates 
+#CAM:
+awk '/^>/{if($0 in seen) next; seen[$0]; print; skip=0; next} !skip {print; skip=1}' /cloud/project/data/blast/atcam/cam.extracted.protein.sequences.fasta > /cloud/project/data/blast/atcam/cam.unique.extracted.protein.sequences.fasta
+
+#CML:
+awk '/^>/{if($0 in seen) next; seen[$0]; print; skip=0; next} !skip {print; skip=1}' /cloud/project/data/blast/atcml/cml.extracted.protein.sequences.fasta > /cloud/project/data/blast/atcml/cml.unique.extracted.protein.sequences.fasta
+
+#CBL:
+awk '/^>/{if($0 in seen) next; seen[$0]; print; skip=0; next} !skip {print; skip=1}' /cloud/project/data/blast/atcbl/cbl.extracted.protein.sequences.fasta > /cloud/project/data/blast/atcbl/cbl.unique.extracted.protein.sequences.fasta
+
+#When creating phylogenetic trees, files in the unique.extracted will be used.
+
+
+#compiling all unique.extracted files
+cat /cloud/project/data/blast/at*/c*.unique.extracted.protein.sequences.fasta /cloud/project/data/arabidopsis/at_cbl_cam_cml.txt > /cloud/project/data/blast/all.protein.sequences.fasta
+
+
+#Removing duplicates from combined file
+awk '/^>/{if($0 in seen) {skip=1; next} else {skip=0; seen[$0]; print; next}} !skip'/cloud/project/data/blast/all.protein.sequences.fasta > /cloud/project/data/blast/all.unique.protein.sequences.fasta
+
+
+
+
+
+
+
+
+#Put into clustalo
+
+#get phylogram
+
+#put phylogram newick string into R or interactive tree of life (ITOL)
+
+
+
+
+
+

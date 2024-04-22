@@ -1,0 +1,185 @@
+---
+title: "working_methodology"
+output: html_document
+date: "2024-02-13"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+#Initial file
+file provided by ben of arabidopsis thaliana CBLs, CAMs and CMLs.
+"at_cbl_cam_cml.txt"
+
+#transferred each amino acid sequence to its own new file 
+awk '/^>/ { if (gene) { print ">" tolower(gene) > tolower(gene) ".txt"; print seq >> tolower(gene) ".txt" } gene = substr($0, 2); gsub(/ /, "", gene); seq = ""; next } { seq = seq $0 } END { if (gene) { print ">" tolower(gene) > tolower(gene) ".txt"; print seq >> tolower(gene) ".txt" } }' at_cbl_cam_cml.txt
+
+#installed marchantia genome annotation from 
+"https://marchantia.info/download/MpTak_v6.1/"
+#version 
+"MpTak_v6.1_func_annotation.tsv"
+#saved as 
+"marchantia.genome.annotation.tsv"
+
+#Downloading marchantia protein database from 
+"https://marchantia.info/download/MpTak_v6.1/"
+
+#file called 
+"MpTak_v6.1r1.protein.fasta.gz"
+
+#saved as 
+"marchantia.protein.fasta.gz"
+
+#unzipped file
+gunzip marchantia.protein.fasta.gz
+
+#saved as
+"marchantia.protein.fasta"
+
+#created blast database 
+makeblastdb -in marchantia.protein.fasta -dbtype prot -out /cloud/project/data/marchantia/databases/protein/marchantia.protein.db
+
+#trial blast using new marchantia protein database
+blastp -query /cloud/project/data/arabidopsis/atcam/atcam1.txt -db /cloud/project/data/marchantia/databases/protein/marchantia.protein.db -out /cloud/project/data/blast/atcam/atcam1.protein.results.txt
+
+
+#Using loop to blast all proteins and save results in seperate files
+#Creating correct loop for all files
+#CBLs:
+header="Query_ID Subject_ID %_Identity Alignment_Length Mismatches Gap_Openings Query_Start Query_End Subject_Start Subject_End E_Value Bit_Score"
+
+for file in /cloud/project/data/arabidopsis/atcbl/atcbl*.txt; do
+    output="/cloud/project/data/blast/atcbl/$(basename "$file" .txt).results.txt"
+  
+   
+    { echo "$header"; blastp -query "$file" -db /cloud/project/data/marchantia/databases/protein/marchantia.protein.db -outfmt 6; } > "$output"
+
+    echo "BLAST analysis for $file completed. Results saved in $output"
+done
+
+#CAMs:
+header="Query_ID Subject_ID %_Identity Alignment_Length Mismatches Gap_Openings Query_Start Query_End Subject_Start Subject_End E_Value Bit_Score"
+
+for file in /cloud/project/data/arabidopsis/atcam/atcam*.txt; do
+    output="/cloud/project/data/blast/atcam/$(basename "$file" .txt).results.txt"
+  
+   
+    { echo "$header"; blastp -query "$file" -db /cloud/project/data/marchantia/databases/protein/marchantia.protein.db -outfmt 6; } > "$output"
+
+    echo "BLAST analysis for $file completed. Results saved in $output"
+done
+
+
+#CMLs:
+header="Query_ID Subject_ID %_Identity Alignment_Length Mismatches Gap_Openings Query_Start Query_End Subject_Start Subject_End E_Value Bit_Score"
+
+for file in /cloud/project/data/arabidopsis/atcml/atcml*.txt; do
+    output="/cloud/project/data/blast/atcml/$(basename "$file" .txt).results.txt"
+  
+   
+    { echo "$header"; blastp -query "$file" -db /cloud/project/data/marchantia/databases/protein/marchantia.protein.db -outfmt 6; } > "$output"
+
+    echo "BLAST analysis for $file completed. Results saved in $output"
+done
+
+#Files saved to /blast
+
+
+#Filtering blast results with evalue threshold of 0.001
+
+#Set threshold
+threshold=0.001
+
+#CAMs:
+for file in /cloud/project/data/blast/atcam/atcam*.results.txt; do
+    output_file="/cloud/project/data/blast/atcam/$(basename "${file%.txt}").lower.filtered.txt"
+    awk -v threshold="$threshold" '$11 < threshold' "$file" > "$output_file"
+    echo "Filtered results for $file. Output saved in $output_file"
+done
+
+#CBL:
+for file in /cloud/project/data/blast/atcbl/atcbl*.results.txt; do
+    output_file="/cloud/project/data/blast/atcbl/$(basename "${file%.txt}").lower.filtered.txt"
+    awk -v threshold="$threshold" '$11 < threshold' "$file" > "$output_file"
+    echo "Filtered results for $file. Output saved in $output_file"
+done
+
+#CML:
+for file in /cloud/project/data/blast/atcml/atcml*.results.txt; do
+    output_file="/cloud/project/data/blast/atcml/$(basename "${file%.txt}").lower.filtered.txt"
+    awk -v threshold="$threshold" '$11 < threshold' "$file" > "$output_file"
+    echo "Filtered results for $file. Output saved in $output_file"
+done
+
+
+#Creating text file with all matched subject ids from filtered results
+#CAMs:
+awk '$2 != "Subject_ID" {print $2}' /cloud/project/data/blast/atcam/atcam*.results.lower.filtered.txt > /cloud/project/data/blast/atcam/atcam.lower.subject.ids.file.txt
+
+#CMLS:
+awk '$2 != "Subject_ID" {print $2}' /cloud/project/data/blast/atcml/atcml*.results.lower.filtered.txt > /cloud/project/data/blast/atcml/atcml.lower.subject.ids.file.txt
+
+#CBLs:
+awk '$2 != "Subject_ID" {print $2}' /cloud/project/data/blast/atcbl/atcbl*.results.lower.filtered.txt > /cloud/project/data/blast/atcbl/atcbl.lower.subject.ids.file.txt
+
+#Removing duplicates
+#CAM:
+awk '/^>/{if($0 in seen) {skip=1; next} else {skip=0; seen[$0]; print; next}} !skip' /cloud/project/data/blast/atcam/atcam.lower.subject.ids.file.txt > /cloud/project/data/blast/atcam/atcam.unique.lower.subject.ids.file.txt
+
+#CML:
+awk '/^>/{if($0 in seen) {skip=1; next} else {skip=0; seen[$0]; print; next}} !skip' /cloud/project/data/blast/atcml/atcml.lower.subject.ids.file.txt > /cloud/project/data/blast/atcml/atcml.unique.lower.subject.ids.file.txt
+
+#CBL:
+awk '/^>/{if($0 in seen) {skip=1; next} else {skip=0; seen[$0]; print; next}} !skip' /cloud/project/data/blast/atcbl/atcbl.lower.subject.ids.file.txt > /cloud/project/data/blast/atcbl/atcbl.unique.lower.subject.ids.file.txt
+
+
+#Creating compiled subject id list
+cat /cloud/project/data/blast/at*/at*.lower.subject.ids.file.txt > /cloud/project/data/blast/all.lower.subject.ids.txt
+
+#Removing duplicates from compiled subject ids
+sort -u /cloud/project/data/blast/all.lower.subject.ids.txt > /cloud/project/data/blast/all.unique.lower.subject.ids.txt
+
+
+#extract protein sequences from database based on a list of subject IDs provided in the file 
+#CAMs:
+blastdbcmd -db /cloud/project/data/marchantia/databases/protein/marchantia.protein.db -entry_batch /cloud/project/data/blast/all.unique.lower.subject.ids.txt -outfmt '%f' -out /cloud/project/data/blast/all.lower.extracted.protein.sequences.fasta
+
+
+#compiling all extracted file with orginal arabidopsis sequences
+cat /cloud/project/data/blast/all.lower.extracted.protein.sequences.fasta /cloud/project/data/arabidopsis/at_cbl_cam_cml.txt > /cloud/project/data/blast/all.lower.extracted.protein.sequences.x.at.sequences.fasta
+
+#Put all.lower.extracted.protein.sequences.x.at.sequences.fasta into clustalo to create tree with a lower threshold.
+
+#used clustalo to generate newick tree string "https://www.ebi.ac.uk/jdispatcher/msa/clustalo"
+
+#Command used by Clustal Omega
+singularity exec singularity/clustalo:1.2.4 clustalo --infile [input sequences] --threads 8 --MAC-RAM 8000 --verbose --guidetree-out [output file] --outfmt clustal --resno --outfile [output file] --output-order tree-order --seqtype protein
+#input sequences and output files are named by clustal omega.
+
+#Building phylogenetic tree
+#Tree created using R code from "building_phylogenetic_tree.R"
+
+#Getting expression data
+# entered the genes from "all.unique.lower.subject.ids.txt" to get expression data using the resource found at "https://bar.utoronto.ca/efp_marchantia/cgi-bin/efpWeb.cgi".
+
+
+
+#Entered gene ids into "https://bar.utoronto.ca/efp_marchantia/cgi-bin/efpWeb.cgi" to get expression data, then analysed using "expression_analysis" script.
+
+#creating fasta removing alternative splices that have not been used going forward with expression data and ef hand analysis.
+
+#Creating file with desired gene ids
+printf "%s\n" Mp1g00710.1 Mp1g00920.1 Mp1g03300.1 Mp1g04860.1 Mp1g13580.1 Mp1g16520.1 Mp1g18460.1 Mp1g22210.1 Mp1g23280.1 Mp1g27470.1 Mp1g27830.1 Mp1g28200.1 Mp2g03100.1 Mp2g07750.1 Mp2g14920.1 Mp2g14930.1 Mp2g14950.1 Mp2g14960.1 Mp3g02440.1 Mp3g03110.1 Mp3g03120.1 Mp3g09930.1 Mp3g14560.1 Mp3g16360.1 Mp3g19130.1 Mp3g20340.1 Mp3g22080.1 Mp4g00900.1 Mp4g01220.1 Mp4g01600.1 Mp4g13490.1 Mp4g19490.1 Mp4g19500.1 Mp4g22970.1 Mp5g13250.1 Mp5g13430.1 Mp5g15300.1 Mp5g15310.1 Mp5g15630.1 Mp5g15820.1 Mp5g19810.2 Mp5g19860.1 Mp5g22000.1 Mp5g24400.1 Mp6g03680.1 Mp6g06060.1 Mp6g09720.1 Mp6g10070.1 Mp6g11320.1 Mp6g16010.1 Mp6g18000.1 Mp6g20440.1 Mp6g20450.1 Mp6g20470.1 Mp8g01550.1 Mp8g02300.1 Mp8g02310.1 Mp8g04190.1 Mp8g07910.1 Mp8g12640.1 MpVg01160.1 > /cloud/project/data/expression_data/ex.gene.ids.txt
+
+#extracting sequences of genes in gene.ids
+blastdbcmd -db /cloud/project/data/marchantia/databases/protein/marchantia.protein.db -entry_batch /cloud/project/data/expression_data/gene.ids.txt -outfmt '%f' -out /cloud/project/data/ef-hand/ef.extracted.protein.sequences.fasta
+
+#".ex/.ef" denotes use for expression or ef hand analysis. 
+#compiled the outputs from ScanProsite "https://prosite.expasy.org/scanprosite/" into file called "ef.hand.output"
+
+#Entering Genes from fasta into ScanProsite 
+
+#ScanProsite output saved as "ef.hand.output.txt
+
