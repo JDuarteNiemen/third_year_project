@@ -1,5 +1,5 @@
-# third_year_project
-Jaimes 3rd year project.
+# Third year project
+Jaimes 3rd year project. Identifying calcium decoder gene homologs in *M.polymorpha*
 
 By following "working_methodology" one can recreate the entire project.
 
