@@ -372,4 +372,5 @@ Zhou, L., Fu, Y. and Yang, Z., 2009. A genome‐wide functional characterization
 
 Resources are available upon request. Project file containing all scripts and data has been emailed to Dr Ben Miller at UEA.
 Project can be found hosted on github
-https://github.com/JDuarteNiemen/Mp_CaMs-CMLs-CBLS
+
+https://github.com/JDuarteNiemen/third_year_project
